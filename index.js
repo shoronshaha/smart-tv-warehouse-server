@@ -32,7 +32,33 @@ async function run() {
             res.send(item);
         });
 
+        app.post('/addItems', async (req, res) => {
+            const addItem = req.body;
+            if (!addItem.brand || !addItem.quantity)
+                return res.send({ success: false, error: "please provide all information" });
 
+            const result = await itemCollection.insertOne(addItem);
+
+            res.send({ success: true, message: `Successfully inserted ${addItem.brand}` });
+
+        });
+        app.get('/addItems', async (req, res) => {
+            const cursor = itemCollection.find();
+            const items = await cursor.toArray();
+
+            if (!items?.length) {
+                return res.send({ success: false, error: "No product found" });
+            }
+            res.send({ success: true, data: items })
+        })
+
+        // Delete
+        app.delete('/item/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await itemCollection.deleteOne(query);
+            res.send(result);
+        })
 
     }
     finally {

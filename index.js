@@ -18,6 +18,7 @@ async function run() {
     try {
         await client.connect();
         const itemCollection = client.db('warehouse').collection('item');
+        const addItemCollection = client.db('warehouse').collection('addItem')
 
         app.get('/item', async (req, res) => {
             const query = {};
@@ -32,24 +33,19 @@ async function run() {
             res.send(item);
         });
 
-        app.post('/addItems', async (req, res) => {
+        app.post('/addItem', async (req, res) => {
             const addItem = req.body;
-            if (!addItem.brand || !addItem.quantity)
-                return res.send({ success: false, error: "please provide all information" });
-
-            const result = await itemCollection.insertOne(addItem);
-
-            res.send({ success: true, message: `Successfully inserted ${addItem.brand}` });
+            const result1 = await itemCollection.insertOne(addItem);
+            const result = await addItemCollection.insertOne(addItem);
+            res.send(result);
 
         });
-        app.get('/addItems', async (req, res) => {
-            const cursor = itemCollection.find();
+        app.get('/addItem', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const cursor = addItemCollection.find(query);
             const items = await cursor.toArray();
-
-            if (!items?.length) {
-                return res.send({ success: false, error: "No product found" });
-            }
-            res.send({ success: true, data: items })
+            res.send(items)
         })
 
         // Delete
@@ -59,6 +55,8 @@ async function run() {
             const result = await itemCollection.deleteOne(query);
             res.send(result);
         })
+
+
 
     }
     finally {

@@ -52,8 +52,29 @@ async function run() {
             const query = { email: email };
             const cursor = addItemCollection.find(query);
             const items = await cursor.toArray();
-            res.send(items)
-        })
+            res.send(items);
+        });
+
+
+        // update quantity
+        app.put('/item/:id', async (req, res) => {
+            const id = req.params.id;
+            const addQuantity = req.body;
+            const filter = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: addQuantity
+            };
+            const result = await itemCollection.updateOne(
+                filter,
+                updateDoc,
+                options
+            );
+            console.log("updating", id);
+            res.send(result);
+        });
+
+
 
         // Delete
         app.delete('/item/:id', async (req, res) => {

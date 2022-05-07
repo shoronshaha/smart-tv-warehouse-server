@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -9,7 +10,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'unauthorized access' })
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden access' });
+        }
+        console.log('decoded', decoded);
+        req.decoded = decoded;
+        next();
+    })
 
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4d7lh.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
@@ -20,39 +36,57 @@ async function run() {
         const itemCollection = client.db('warehouse').collection('item');
         const addItemCollection = client.db('warehouse').collection('addItem')
         const testimonialCollection = client.db('warehouse').collection('testimonial');
+
+        //Auth
+        app.post('/login', async (req, res) => {
+            const user = req.body;
+            const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
+            res.send({ accessToken });
+        })
+
+
+        // testimonial data get from mongodb
         app.get('/testimonial', async (req, res) => {
             const query = {};
             const cursor = testimonialCollection.find(query);
             const testimonial = await cursor.toArray();
             res.send(testimonial);
         })
-
+        // all item data get from mongodb
         app.get('/item', async (req, res) => {
             const query = {};
             const cursor = itemCollection.find(query);
             const items = await cursor.toArray();
             res.send(items);
         });
+        // specific item:id  data get from mongodb
         app.get('/item/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const item = await itemCollection.findOne(query);
             res.send(item);
         });
-
+        // additem  collection api
+        app.get('/addItem', verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const email = req.query.email;
+            if (email == decodedEmail) {
+                const query = { email: email };
+                const cursor = addItemCollection.find(query);
+                const items = await cursor.toArray();
+                res.send(items);
+            }
+            else {
+                res.status(403).send({ message: 'forbidden access' });
+            }
+        });
+        // additem post data from mongodb
         app.post('/addItem', async (req, res) => {
             const addItem = req.body;
             const result1 = await itemCollection.insertOne(addItem);
             const result = await addItemCollection.insertOne(addItem);
             res.send(result);
 
-        });
-        app.get('/addItem', async (req, res) => {
-            const email = req.query.email;
-            const query = { email: email };
-            const cursor = addItemCollection.find(query);
-            const items = await cursor.toArray();
-            res.send(items);
         });
 
 
@@ -70,7 +104,6 @@ async function run() {
                 updateDoc,
                 options
             );
-            console.log("updating", id);
             res.send(result);
         });
 

@@ -19,6 +19,13 @@ async function run() {
         await client.connect();
         const itemCollection = client.db('warehouse').collection('item');
         const addItemCollection = client.db('warehouse').collection('addItem')
+        const testimonialCollection = client.db('warehouse').collection('testimonial');
+        app.get('/testimonial', async (req, res) => {
+            const query = {};
+            const cursor = testimonialCollection.find(query);
+            const testimonial = await cursor.toArray();
+            res.send(testimonial);
+        })
 
         app.get('/item', async (req, res) => {
             const query = {};
